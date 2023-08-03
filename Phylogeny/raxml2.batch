@@ -1,0 +1,64 @@
+#!/bin/bash
+#Instruction:this batch was used to build a MLtree with Raxml-ng
+#Author:oyjh
+#Realse:1
+#Date:2022/2/14
+
+source ${HOME}/.bashrc
+
+raxml(){
+	prefix1=`echo ${input_file1} | cut -d "." -f 1`
+	output_file1="${prefix1}_mafftAlign.fasta"
+	if [ ! -f ${output_file1} ];then
+		mafft --localpair  --maxiterate 16 --inputorder ${input_file1} > ${output_file1}
+	fi
+
+	#Trim the sequence with TrimAL
+	input_file2=${output_file1}
+	prefix2=`echo ${input_file2} | cut -d "." -f 1`
+	output_file2="${prefix2}_trimal.fasta"
+	if [ ! -f ${output_file2} ];then
+		trimal -in ${input_file2} -out ${output_file2} -automated1 -keepheader
+	fi
+
+	#Find the best model
+	input_file3=${output_file2}
+	ouput_file3="${prefix1}_prottest_output"
+	echo
+	echo "Finding the best model for building a ML tree with prottest program......"
+	echo
+	prottest -i ${input_file3} -S 2 -all-distributions -F -BIC -tc 0.5 -threads 40 > ${ouput_file3}
+	bestModel=`cat ${ouput_file3} | grep "Best model according to BIC: " | cut -d " " -f 6`
+	echo "The best model of the msa is ${bestModel}"
+	#Build the ML tree
+	echo
+	echo "Building the ML tree with the software raxml-ng."
+	echo
+	sed -i "s/ $/$/g" ${input_file3}
+	sed -i "s/ /_/g" ${input_file3}
+	sed -i "s/;/_/g" ${input_file3}
+	sed -i "s/,/_/g" ${input_file3}
+	sed -i "s/(/_/g" ${input_file3}
+	sed -i "s/://g" ${input_file3}
+	sed -i "s/)//g" ${input_file3}
+	raxml-ng --all --msa ${input_file3} --model ${bestModel} --tree pars{10} --bs-trees 1000
+
+	output_file4="${prefix1}_Raxml-ng"
+	if [ ! -d ${output_file4} ];then
+        	mkdir ${output_file4}
+	else
+        	rm -rf ${output_file4}
+	        mkdir ${output_file4}
+	fi
+
+	mv *_mafftAlign* ${output_file4}
+	mv ${prefix1}_prottest_output ${output_file4}
+}
+
+for file in `ls raw_data`;do
+        cp -r raw_data/${file} .
+	input_file1=${file}
+        raxml
+done
+
+exit 0

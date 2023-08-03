@@ -1,0 +1,19 @@
+#!/bin/bash
+
+input_file=test2Seq.fasta
+outputDir=SMART_results_test
+last_seq=`cat $input_file | grep ">" | tail -1 | sed 's/>//'`
+last_file="$outputDir/${last_seq}_SMART_results.txt"
+
+command="perl smart.pl --inputFile $input_file --includePfam --includeSignalP --outputDirectory $outputDir"
+while true;do
+	$command
+	if [ -f $last_file ];then
+		echo -e "\nJob completed.Congratulations!"
+		exit
+	else
+		date=`date`
+		echo -e "\n$date\nRetrying......\n"
+		$command
+	fi
+done

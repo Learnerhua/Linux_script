@@ -1,0 +1,39 @@
+#!/bin/bash
+#Instruction:this batch was used to build a MLtree with IQtree
+#Author:oyjh
+#Realse:1
+#Date:2022/2/14
+
+#sequences aligment with mafft
+
+iqtree_exe(){
+	prefix1=`echo ${input_file1} | cut -d "." -f 1`
+	output_file1="${prefix1}_mafftAlign.fasta"
+	mafft --localpair  --maxiterate 16 --inputorder ${input_file1} > ${output_file1}
+
+	#Trim the sequence with TrimAL
+	input_file2=${output_file1}
+	prefix2=`echo ${input_file2} | cut -d "." -f 1`
+	output_file2="${prefix2}_trimal.fasta"
+	trimal -in ${input_file2} -out ${output_file2} -automated1 -keepheader
+
+	#Build a ML tree wit IQtree
+	iqtree -s ${output_file2} -m MFP -B 1000 --bnni -T AUTO
+
+	output_file3="${prefix1}_IQtree"
+	if [ -d ${output_file3} ];then
+		mkdir ${output_file3}
+	else
+		rm -rf ${output_file3}
+		mkdir ${output_file3}
+	fi	
+
+	mv *fasta.* ${output_file3}
+}	
+
+for file in `ls raw_data`;do
+	cp -r raw_data/${file} .
+	input_file1=${file}
+	iqtree_exe
+done
+
